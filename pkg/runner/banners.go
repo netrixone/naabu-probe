@@ -5,27 +5,10 @@ import (
 	"strings"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/naabu/v2/pkg/privileges"
-	"github.com/projectdiscovery/naabu/v2/pkg/scan"
 	osutil "github.com/projectdiscovery/utils/os"
-	updateutils "github.com/projectdiscovery/utils/update"
+	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
+	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 )
-
-const banner = `
-                  __
-  ___  ___  ___ _/ /  __ __
- / _ \/ _ \/ _ \/ _ \/ // /
-/_//_/\_,_/\_,_/_.__/\_,_/
-`
-
-// Version is the current version of naabu
-const version = `2.3.4`
-
-// showBanner is used to show the banner to the user
-func showBanner() {
-	gologger.Print().Msgf("%s\n", banner)
-	gologger.Print().Msgf("\t\tprojectdiscovery.io\n\n")
-}
 
 // showNetworkCapabilities shows the network capabilities/scan types possible with the running user
 func showNetworkCapabilities(options *Options) {
@@ -38,28 +21,12 @@ func showNetworkCapabilities(options *Options) {
 			accessLevel = "CAP_NET_RAW"
 		}
 		scanType = "SYN"
-	case options.Passive:
-		accessLevel = "non root"
-		scanType = "PASSIVE"
 	default:
 		accessLevel = "non root"
 		scanType = "CONNECT"
 	}
 
-	switch {
-	case options.OnlyHostDiscovery:
-		scanType = "Host Discovery"
-		gologger.Info().Msgf("Running %s\n", scanType)
-	case options.Passive:
-		scanType = "PASSIVE"
-		gologger.Info().Msgf("Running %s scan\n", scanType)
-	default:
-		gologger.Info().Msgf("Running %s scan with %s privileges\n", scanType, accessLevel)
-	}
-}
-
-func showHostDiscoveryInfo() {
-	gologger.Info().Msgf("Running host discovery scan\n")
+	gologger.Info().Msgf("Running %s scan with %s privileges\n", scanType, accessLevel)
 }
 
 func showNetworkInterfaces() error {
@@ -88,12 +55,4 @@ func showNetworkInterfaces() error {
 	gologger.Info().Msgf("External Ip: %s\n", externalIP)
 
 	return nil
-}
-
-// GetUpdateCallback returns a callback function that updates naabu
-func GetUpdateCallback() func() {
-	return func() {
-		showBanner()
-		updateutils.GetUpdateToolCallback("naabu", version)()
-	}
 }

@@ -6,7 +6,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/projectdiscovery/naabu/v2/pkg/israce"
+	"github.com/stuchl4n3k/naabu-probe/pkg/israce"
 	"golang.org/x/sys/unix"
 )
 
@@ -23,7 +23,7 @@ func isPrivileged() bool {
 		defer runtime.UnlockOSThread()
 
 		if err := unix.Capget(&header, &data); err == nil {
-			data.Inheritable = (1 << unix.CAP_NET_RAW)
+			data.Inheritable = 1 << unix.CAP_NET_RAW
 
 			if err := unix.Capset(&header, &data); err == nil {
 				return true

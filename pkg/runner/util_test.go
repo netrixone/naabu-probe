@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/projectdiscovery/dnsx/libs/dnsx"
-	"github.com/projectdiscovery/naabu/v2/pkg/scan"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 )
 
 func Test_host2ips(t *testing.T) {

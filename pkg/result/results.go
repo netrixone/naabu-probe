@@ -3,18 +3,16 @@ package result
 import (
 	"sync"
 
-	"github.com/projectdiscovery/naabu/v2/pkg/port"
-	"github.com/projectdiscovery/naabu/v2/pkg/result/confidence"
+	"github.com/stuchl4n3k/naabu-probe/pkg/port"
 	"golang.org/x/exp/maps"
 )
 
-type ResultFn func(*HostResult)
+type ResultCallback func(*HostResult)
 
 type HostResult struct {
-	Host       string
-	IP         string
-	Ports      []*port.Port
-	Confidence confidence.ConfidenceLevel
+	Host  string
+	IP    string
+	Ports []*port.Port
 }
 
 // Result of the scan
@@ -33,7 +31,7 @@ func NewResult() *Result {
 	return &Result{ipPorts: ipPorts, ips: ips, skipped: skipped}
 }
 
-// AddPort to a specific ip
+// GetIPs to a specific ips.
 func (r *Result) GetIPs() chan string {
 	r.Lock()
 
@@ -58,7 +56,7 @@ func (r *Result) HasIPS() bool {
 	return len(r.ips) > 0
 }
 
-// GetIpsPorts returns the ips and ports
+// GetIPsPorts returns the ips and ports.
 func (r *Result) GetIPsPorts() chan *HostResult {
 	r.RLock()
 
@@ -69,11 +67,7 @@ func (r *Result) GetIPsPorts() chan *HostResult {
 		defer r.RUnlock()
 
 		for ip, ports := range r.ipPorts {
-			confidenceLevel := confidence.Normal
-			if r.HasSkipped(ip) {
-				confidenceLevel = confidence.Low
-			}
-			out <- &HostResult{IP: ip, Ports: maps.Values(ports), Confidence: confidenceLevel}
+			out <- &HostResult{IP: ip, Ports: maps.Values(ports)}
 		}
 	}()
 
@@ -171,13 +165,4 @@ func (r *Result) AddSkipped(ip string) {
 	defer r.Unlock()
 
 	r.skipped[ip] = struct{}{}
-}
-
-// HasSkipped checks if an ip has been skipped
-func (r *Result) HasSkipped(ip string) bool {
-	r.RLock()
-	defer r.RUnlock()
-
-	_, ok := r.skipped[ip]
-	return ok
 }

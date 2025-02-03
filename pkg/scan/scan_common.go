@@ -5,9 +5,8 @@ import (
 	"net"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/naabu/v2/pkg/privileges"
-	"github.com/projectdiscovery/naabu/v2/pkg/routing"
-	"golang.org/x/net/icmp"
+	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
+	"github.com/stuchl4n3k/naabu-probe/pkg/routing"
 )
 
 const (
@@ -16,16 +15,12 @@ const (
 )
 
 var (
-	ListenHandlers                                          []*ListenHandler
-	NetworkInterface                                        string
-	networkInterface                                        *net.Interface
-	transportPacketSend, icmpPacketSend, ethernetPacketSend chan *PkgSend
-	icmpConn4, icmpConn6                                    *icmp.PacketConn
+	ListenHandlers                          []*ListenHandler
+	NetworkInterface                        string
+	transportPacketSend, ethernetPacketSend chan *PkgSend
 
 	PkgRouter routing.Router
 
-	ArpRequestAsync  func(ip string)
-	InitScanner      func(s *Scanner) error
 	NumberOfHandlers = 1
 	tcpsequencer     = NewTCPSequencer()
 )
@@ -38,7 +33,7 @@ type ListenHandler struct {
 	SourceIP6                              net.IP
 	Port                                   int
 	TcpConn4, UdpConn4, TcpConn6, UdpConn6 *net.IPConn
-	TcpChan, UdpChan, HostDiscoveryChan    chan *PkgResult
+	TcpChan, UdpChan                       chan *PkgResult
 }
 
 func NewListenHandler() *ListenHandler {

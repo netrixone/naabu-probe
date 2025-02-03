@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/projectdiscovery/naabu/v2/pkg/port"
-	"github.com/projectdiscovery/naabu/v2/pkg/protocol"
 	"github.com/stretchr/testify/assert"
+	"github.com/stuchl4n3k/naabu-probe/pkg/port"
+	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
 )
 
 func TestParsePortsList(t *testing.T) {

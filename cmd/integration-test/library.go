@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/armon/go-socks5"
-	"github.com/projectdiscovery/naabu/v2/internal/testutils"
-	"github.com/projectdiscovery/naabu/v2/pkg/privileges"
-	"github.com/projectdiscovery/naabu/v2/pkg/result"
-	"github.com/projectdiscovery/naabu/v2/pkg/runner"
+	"github.com/stuchl4n3k/naabu-probe/internal/testutils"
+	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
+	"github.com/stuchl4n3k/naabu-probe/pkg/result"
+	"github.com/stuchl4n3k/naabu-probe/pkg/runner"
 )
 
 var libraryTestcases = map[string]testutils.TestCase{
@@ -37,7 +37,6 @@ func (h *naabuPassiveSingleLibrary) Execute() error {
 	options := runner.Options{
 		HostsFile: testFile,
 		Ports:     "80",
-		Passive:   true,
 		OnResult:  func(hr *result.HostResult) {},
 	}
 
@@ -173,8 +172,6 @@ func (h *naabuWithSocks5) Execute() error {
 		HostsFile: testFile,
 		Ports:     "80",
 		ScanType:  "c",
-		Proxy:     "127.0.0.1:38401",
-		ProxyAuth: "test:test",
 		OnResult: func(hr *result.HostResult) {
 			got = true
 		},

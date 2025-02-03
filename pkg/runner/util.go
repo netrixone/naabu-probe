@@ -2,13 +2,12 @@ package runner
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/naabu/v2/pkg/scan"
 	iputil "github.com/projectdiscovery/utils/ip"
 	osutil "github.com/projectdiscovery/utils/os"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 )
 
 func (r *Runner) host2ips(target string) (targetIPsV4 []string, targetIPsV6 []string, err error) {
@@ -43,13 +42,4 @@ func (r *Runner) host2ips(target string) (targetIPsV4 []string, targetIPsV6 []st
 
 func isOSSupported() bool {
 	return osutil.IsLinux() || osutil.IsOSX()
-}
-
-func getPort(target string) (string, string, bool) {
-	host, port, err := net.SplitHostPort(target)
-	if err == nil && iputil.IsPort(port) {
-		return host, port, true
-	}
-
-	return target, "", false
 }

@@ -7,4 +7,6 @@ cmd/functional-test/functional-test
 cmd/functional-test/naabu
 cmd/functional-test/*.cfg
 .vscode
+.idea
 dist
+naabu-probe

@@ -195,18 +195,18 @@ loop:
 				switch attr.Attr.Type {
 				case syscall.RTA_DST:
 					routeInfo.Dst = &net.IPNet{
-						IP:   net.IP(attr.Value),
+						IP:   attr.Value,
 						Mask: net.CIDRMask(int(rt.DstLen), len(attr.Value)*8),
 					}
 				case syscall.RTA_SRC:
 					routeInfo.Src = &net.IPNet{
-						IP:   net.IP(attr.Value),
+						IP:   attr.Value,
 						Mask: net.CIDRMask(int(rt.SrcLen), len(attr.Value)*8),
 					}
 				case syscall.RTA_GATEWAY:
-					routeInfo.Gateway = net.IP(attr.Value)
+					routeInfo.Gateway = attr.Value
 				case syscall.RTA_PREFSRC:
-					routeInfo.PrefSrc = net.IP(attr.Value)
+					routeInfo.PrefSrc = attr.Value
 				case syscall.RTA_IIF:
 					routeInfo.InputIface = *(*uint32)(unsafe.Pointer(&attr.Value[0]))
 				case syscall.RTA_OIF:

@@ -2,13 +2,12 @@ package runner
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/naabu/v2/pkg/port"
-	"github.com/projectdiscovery/naabu/v2/pkg/protocol"
+	"github.com/stuchl4n3k/naabu-probe/pkg/port"
+	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
 )
 
 const portListStrParts = 2
@@ -23,51 +22,23 @@ const (
 // ParsePorts parses the list of ports and creates a port map
 func ParsePorts(options *Options) ([]*port.Port, error) {
 	var portsFileMap, portsCLIMap, topPortsCLIMap, portsConfigList []*port.Port
-
-	// If the user has specfied a ports file, use it
-	if options.PortsFile != "" {
-		data, err := os.ReadFile(options.PortsFile)
-		if err != nil {
-			return nil, fmt.Errorf("could not read ports: %s", err)
-		}
-		ports, err := parsePortsList(string(data))
-		if err != nil {
-			return nil, fmt.Errorf("could not read ports: %s", err)
-		}
-		portsFileMap, err = excludePorts(options, ports)
-		if err != nil {
-			return nil, fmt.Errorf("could not read ports: %s", err)
-		}
-	}
+	var err error
 
 	// If the user has specfied top ports, use them as well
 	if options.TopPorts != "" {
 		switch strings.ToLower(options.TopPorts) {
-		case "full": // If the user has specfied full ports, use them
-			var err error
-			ports, err := parsePortsList(Full)
+		case "full": // If the user has specified full ports, use them
+			topPortsCLIMap, err = parsePortsList(Full)
 			if err != nil {
 				return nil, fmt.Errorf("could not read ports: %s", err)
 			}
-			topPortsCLIMap, err = excludePorts(options, ports)
+		case "100": // If the user has specified 100, use them
+			topPortsCLIMap, err = parsePortsList(NmapTop100)
 			if err != nil {
 				return nil, fmt.Errorf("could not read ports: %s", err)
 			}
-		case "100": // If the user has specfied 100, use them
-			ports, err := parsePortsList(NmapTop100)
-			if err != nil {
-				return nil, fmt.Errorf("could not read ports: %s", err)
-			}
-			topPortsCLIMap, err = excludePorts(options, ports)
-			if err != nil {
-				return nil, fmt.Errorf("could not read ports: %s", err)
-			}
-		case "1000": // If the user has specfied 1000, use them
-			ports, err := parsePortsList(NmapTop1000)
-			if err != nil {
-				return nil, fmt.Errorf("could not read ports: %s", err)
-			}
-			topPortsCLIMap, err = excludePorts(options, ports)
+		case "1000": // If the user has specified 1000, use them
+			topPortsCLIMap, err = parsePortsList(NmapTop1000)
 			if err != nil {
 				return nil, fmt.Errorf("could not read ports: %s", err)
 			}
@@ -76,18 +47,14 @@ func ParsePorts(options *Options) ([]*port.Port, error) {
 		}
 	}
 
-	// If the user has specfied ports option, use them too
+	// If the user has specified ports option, use them too
 	if options.Ports != "" {
 		// "-" equals to all ports
 		if options.Ports == "-" {
 			// Parse the custom ports list provided by the user
 			options.Ports = "1-65535"
 		}
-		ports, err := parsePortsList(options.Ports)
-		if err != nil {
-			return nil, fmt.Errorf("could not read ports: %s", err)
-		}
-		portsCLIMap, err = excludePorts(options, ports)
+		portsCLIMap, err = parsePortsList(options.Ports)
 		if err != nil {
 			return nil, fmt.Errorf("could not read ports: %s", err)
 		}
@@ -102,43 +69,10 @@ func ParsePorts(options *Options) ([]*port.Port, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not read ports: %s", err)
 		}
-		m, err := excludePorts(options, portsList)
-		if err != nil {
-			return nil, err
-		}
-		return m, nil
+		return portsList, nil
 	}
 
 	return ports, nil
-}
-
-// excludePorts excludes the list of ports from the exclusion list
-func excludePorts(options *Options, ports []*port.Port) ([]*port.Port, error) {
-	if options.ExcludePorts == "" {
-		return ports, nil
-	}
-
-	var filteredPorts []*port.Port
-
-	// Exclude the ports specified by the user in exclusion list
-	excludedPortsCLI, err := parsePortsList(options.ExcludePorts)
-	if err != nil {
-		return nil, fmt.Errorf("could not read exclusion ports: %s", err)
-	}
-
-	for _, port := range ports {
-		found := false
-		for _, excludedPort := range excludedPortsCLI {
-			if excludedPort.Port == port.Port && excludedPort.Protocol == port.Protocol {
-				found = true
-				break
-			}
-		}
-		if !found {
-			filteredPorts = append(filteredPorts, port)
-		}
-	}
-	return filteredPorts, nil
 }
 
 func parsePortsSlice(ranges []string) ([]*port.Port, error) {

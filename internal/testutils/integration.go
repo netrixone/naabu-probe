@@ -25,7 +25,7 @@ func RunNaabuAndGetResults(question string, debug bool, extra ...string) ([]stri
 	if err != nil {
 		return nil, err
 	}
-	parts := []string{}
+	var parts []string
 	items := strings.Split(string(data), "\n")
 	for _, i := range items {
 		if i != "" {
@@ -50,7 +50,7 @@ func RunNaabuBinaryAndGetResults(target string, naabuBinary string, debug bool, 
 	if err != nil {
 		return nil, err
 	}
-	parts := []string{}
+	var parts []string
 	items := strings.Split(string(data), "\n")
 	for _, i := range items {
 		if i != "" {

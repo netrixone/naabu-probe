@@ -3,7 +3,6 @@
 package scan
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -17,14 +16,11 @@ import (
 	"github.com/gopacket/gopacket/pcap"
 	"github.com/projectdiscovery/freeport"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/naabu/v2/pkg/port"
-	"github.com/projectdiscovery/naabu/v2/pkg/privileges"
-	"github.com/projectdiscovery/naabu/v2/pkg/protocol"
-	"github.com/projectdiscovery/naabu/v2/pkg/routing"
 	iputil "github.com/projectdiscovery/utils/ip"
-	"golang.org/x/net/icmp"
-	"golang.org/x/net/ipv4"
-	"golang.org/x/net/ipv6"
+	"github.com/stuchl4n3k/naabu-probe/pkg/port"
+	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
+	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
+	"github.com/stuchl4n3k/naabu-probe/pkg/routing"
 )
 
 var (
@@ -37,8 +33,6 @@ type Handlers struct {
 	TransportActive   []*pcap.Handle
 	LoopbackHandlers  []*pcap.Handle
 	TransportInactive []*pcap.InactiveHandle
-	EthernetActive    []*pcap.Handle
-	EthernetInactive  []*pcap.InactiveHandle
 }
 
 func init() {
@@ -47,20 +41,6 @@ func init() {
 	}
 
 	transportPacketSend = make(chan *PkgSend, packetSendSize)
-
-	var err error
-	icmpConn4, err = icmp.ListenPacket("ip4:icmp", "0.0.0.0")
-	if err != nil {
-		gologger.Debug().Msgf("could not setup ip4:icmp: %s", err)
-	}
-
-	icmpConn6, err = icmp.ListenPacket("ip6:icmp", "::")
-	if err != nil {
-		gologger.Debug().Msgf("could not setup ip6:icmp: %s", err)
-	}
-
-	icmpPacketSend = make(chan *PkgSend, packetSendSize)
-	ethernetPacketSend = make(chan *PkgSend, packetSendSize)
 
 	// pre-reserve up to 10 ports
 	for i := 0; i < NumberOfHandlers; i++ {
@@ -81,7 +61,6 @@ func init() {
 	}
 	go TransportReadWorker()
 	go TransportWriteWorker()
-	go ICMPWriteWorker()
 }
 
 func buildListenHandler() (*ListenHandler, error) {
@@ -94,7 +73,6 @@ func buildListenHandler() (*ListenHandler, error) {
 
 	listenHandler.TcpChan = make(chan *PkgResult, chanSize)
 	listenHandler.UdpChan = make(chan *PkgResult, chanSize)
-	listenHandler.HostDiscoveryChan = make(chan *PkgResult, chanSize)
 
 	var err error
 	listenHandler.TcpConn4, err = net.ListenIP("ip4:tcp", &net.IPAddr{IP: net.ParseIP(fmt.Sprintf("0.0.0.0:%d", listenHandler.Port))})
@@ -110,39 +88,11 @@ func buildListenHandler() (*ListenHandler, error) {
 
 	listenHandler.UdpConn6, _ = net.ListenIP("ip6:udp", &net.IPAddr{IP: net.ParseIP(fmt.Sprintf(":::%d", listenHandler.Port))})
 
-	go listenHandler.ICMPReadWorker4()
-	go listenHandler.ICMPReadWorker6()
 	go listenHandler.TcpReadWorker4()
 	go listenHandler.TcpReadWorker6()
 	go listenHandler.UdpReadWorker4()
 	go listenHandler.UdpReadWorker6()
 	return listenHandler, nil
-}
-
-// ICMPWriteWorker writes packet to the network layer
-func ICMPWriteWorker() {
-	for pkg := range icmpPacketSend {
-		switch {
-		case pkg.flag == IcmpEchoRequest:
-			PingIcmpEchoRequestAsync(pkg.ip)
-		case pkg.flag == IcmpTimestampRequest:
-			PingIcmpTimestampRequestAsync(pkg.ip)
-		case pkg.flag == IcmpAddressMaskRequest:
-			PingIcmpAddressMaskRequestAsync(pkg.ip)
-		case pkg.flag == Ndp:
-			PingNdpRequestAsync(pkg.ip)
-		}
-	}
-}
-
-// EthernetWriteWorker writes packet to the network layer
-func EthernetWriteWorker() {
-	for pkg := range ethernetPacketSend {
-		switch {
-		case pkg.flag == Arp:
-			ArpRequestAsync(pkg.ip)
-		}
-	}
 }
 
 // TCPWriteWorker that sends out TCP|UDP packets
@@ -376,63 +326,6 @@ func sendAsyncUDP6(listenHandler *ListenHandler, ip string, p *port.Port, pkgFla
 	}
 }
 
-// ICMPReadWorker4 reads packets from the network layer
-func (l *ListenHandler) ICMPReadWorker4() {
-	data := make([]byte, 1500)
-	for {
-		if icmpConn4 == nil {
-			return
-		}
-		n, addr, err := icmpConn4.ReadFrom(data)
-		if err != nil {
-			continue
-		}
-
-		rm, err := icmp.ParseMessage(ProtocolICMP, data[:n])
-		if err != nil {
-			continue
-		}
-
-		switch rm.Type {
-		case ipv4.ICMPTypeEchoReply, ipv4.ICMPTypeTimestampReply:
-			l.HostDiscoveryChan <- &PkgResult{ipv4: addr.String()}
-		}
-	}
-}
-
-// ICMPReadWorker6 reads packets from the network layer
-func (l *ListenHandler) ICMPReadWorker6() {
-	if icmpConn6 == nil {
-		return
-	}
-	data := make([]byte, 1500)
-	for {
-		n, addr, err := icmpConn6.ReadFrom(data)
-		if err != nil {
-			continue
-		}
-
-		rm, err := icmp.ParseMessage(ProtocolIPv6ICMP, data[:n])
-		if err != nil {
-			continue
-		}
-
-		switch rm.Type {
-		case ipv6.ICMPTypeEchoReply:
-			ip := addr.String()
-			// check if it has [host]:port
-			if ipSplit, _, err := net.SplitHostPort(ip); err == nil {
-				ip = ipSplit
-			}
-			// drop zone
-			if idx := strings.Index(ip, "%"); idx > 0 {
-				ip = ip[:idx]
-			}
-			l.HostDiscoveryChan <- &PkgResult{ipv6: ip}
-		}
-	}
-}
-
 var defaultSerializeOptions = gopacket.SerializeOptions{
 	FixLengths:       true,
 	ComputeChecksums: true,
@@ -555,8 +448,6 @@ func SetupHandlerUnix(interfaceName, bpfFilter string, protocols ...protocol.Pro
 		switch proto {
 		case protocol.TCP, protocol.UDP:
 			handlers.TransportInactive = append(handlers.TransportInactive, inactive)
-		case protocol.ARP:
-			handlers.EthernetInactive = append(handlers.EthernetInactive, inactive)
 		default:
 			panic("protocol not supported")
 		}
@@ -585,8 +476,6 @@ func SetupHandlerUnix(interfaceName, bpfFilter string, protocols ...protocol.Pro
 				handlers.TransportActive = append(handlers.TransportActive, handle)
 			}
 			handlers.InterfaceHandle[iface.Name] = handle
-		case protocol.ARP:
-			handlers.EthernetActive = append(handlers.EthernetActive, handle)
 		default:
 			panic("protocol not supported")
 		}
@@ -607,12 +496,6 @@ func TransportReadWorker() {
 			switch {
 			case !sourcePortMatches:
 				gologger.Debug().Msgf("Discarding Transport packet from non target ips: ip4=%s ip6=%s tcp_dport=%d udp_dport=%d\n", srcIP4, srcIP6, tcp.DstPort, udp.DstPort)
-			case listenHandler.Phase.Is(HostDiscovery):
-				proto := protocol.TCP
-				if udpPortMatches {
-					proto = protocol.UDP
-				}
-				listenHandler.HostDiscoveryChan <- &PkgResult{ipv4: srcIP4, ipv6: srcIP6, port: &port.Port{Port: int(tcp.SrcPort), Protocol: proto}}
 			case tcpPortMatches && tcp.SYN && tcp.ACK:
 				listenHandler.TcpChan <- &PkgResult{ipv4: srcIP4, ipv6: srcIP6, port: &port.Port{Port: int(tcp.SrcPort), Protocol: protocol.TCP}}
 			case udpPortMatches && udp.Length > 0: // needs a better matching of udp payloads
@@ -702,7 +585,7 @@ func TransportReadWorker() {
 				parser4NoMac, parser6NoMac,
 			)
 
-			decoded := []gopacket.LayerType{}
+			var decoded []gopacket.LayerType
 			for {
 				data, _, err := handler.ReadPacketData()
 				if err == io.EOF {
@@ -728,72 +611,17 @@ func TransportReadWorker() {
 		}(handler)
 	}
 
-	// Ethernet Readers
-	for _, handler := range handlers.EthernetActive {
-		wgread.Add(1)
-		go func(handler *pcap.Handle) {
-			defer wgread.Done()
-
-			var (
-				eth layers.Ethernet
-				arp layers.ARP
-			)
-
-			parser4 := gopacket.NewDecodingLayerParser(layers.LayerTypeEthernet, &eth, &arp)
-			parser4.IgnoreUnsupported = true
-			var parsers []*gopacket.DecodingLayerParser
-			parsers = append(parsers, parser4)
-
-			decoded := []gopacket.LayerType{}
-
-			for {
-				data, _, err := handler.ReadPacketData()
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					continue
-				}
-
-				for _, parser := range parsers {
-					err := parser.DecodeLayers(data, &decoded)
-					if err != nil {
-						continue
-					}
-					for _, layerType := range decoded {
-						if layerType == layers.LayerTypeARP {
-							// check if the packet was sent out
-							isReply := arp.Operation == layers.ARPReply
-							var sourceMacIsInterfaceMac bool
-							if networkInterface != nil {
-								sourceMacIsInterfaceMac = bytes.Equal([]byte(networkInterface.HardwareAddr), arp.SourceHwAddress)
-							}
-							isOutgoingPacket := !isReply || sourceMacIsInterfaceMac
-							if isOutgoingPacket {
-								continue
-							}
-							srcIP4 := net.IP(arp.SourceProtAddress)
-
-							for _, listenHandler := range ListenHandlers {
-								listenHandler.HostDiscoveryChan <- &PkgResult{ipv4: ToString(srcIP4)}
-							}
-						}
-					}
-				}
-			}
-		}(handler)
-	}
-
 	wgread.Wait()
 }
 
 // CleanupHandlers for all interfaces
 func CleanupHandlersUnix() {
-	allActive := append(handlers.TransportActive, handlers.EthernetActive...)
+	allActive := append(handlers.TransportActive)
 	allActive = append(allActive, handlers.LoopbackHandlers...)
 	for _, handler := range allActive {
 		handler.Close()
 	}
-	allInactive := append(handlers.TransportInactive, handlers.EthernetInactive...)
+	allInactive := append(handlers.TransportInactive)
 	for _, inactiveHandler := range allInactive {
 		inactiveHandler.CleanUp()
 	}
@@ -834,104 +662,6 @@ func SetupHandler(interfaceName string) error {
 	if err != nil {
 		return err
 	}
-	// arp filter should be improved with source mac
-	// https://stackoverflow.com/questions/40196549/bpf-expression-to-capture-only-arp-reply-packets
-	// (arp[6:2] = 2) and dst host host and ether dst mac
-	bpfFilter = "arp"
-	err = SetupHandlerUnix(interfaceName, bpfFilter, protocol.ARP)
-	if err != nil {
-		return err
-	}
 
 	return nil
-}
-
-// ACKPort sends an ACK packet to a port
-func ACKPort(listenHandler *ListenHandler, dstIP string, port int, timeout time.Duration) (bool, error) {
-	conn, err := net.ListenPacket("ip4:tcp", "0.0.0.0")
-	if err != nil {
-		return false, err
-	}
-	defer conn.Close()
-
-	rawPort, err := freeport.GetFreeTCPPort("")
-	if err != nil {
-		return false, err
-	}
-
-	// Construct all the network layers we need.
-	ip4 := layers.IPv4{
-		DstIP:    net.ParseIP(dstIP),
-		Version:  4,
-		TTL:      255,
-		Protocol: layers.IPProtocolTCP,
-	}
-
-	_, _, sourceIP, err := PkgRouter.Route(ip4.DstIP)
-	if err != nil {
-		return false, err
-	}
-
-	if listenHandler.SourceIp4 != nil {
-		ip4.SrcIP = listenHandler.SourceIp4
-	} else {
-		ip4.SrcIP = sourceIP
-	}
-
-	tcpOption := layers.TCPOption{
-		OptionType:   layers.TCPOptionKindMSS,
-		OptionLength: 4,
-		OptionData:   []byte{0x12, 0x34},
-	}
-
-	tcp := layers.TCP{
-		SrcPort: layers.TCPPort(rawPort.Port),
-		DstPort: layers.TCPPort(port),
-		ACK:     true,
-		Window:  1024,
-		Seq:     tcpsequencer.Next(),
-		Options: []layers.TCPOption{tcpOption},
-	}
-
-	err = tcp.SetNetworkLayerForChecksum(&ip4)
-	if err != nil {
-		return false, err
-	}
-
-	err = sendWithConn(dstIP, conn, &tcp)
-	if err != nil {
-		return false, err
-	}
-
-	data := make([]byte, 4096)
-	for {
-		n, addr, err := conn.ReadFrom(data)
-		if err != nil {
-			break
-		}
-
-		// not matching ip
-		if addr.String() != dstIP {
-			gologger.Debug().Msgf("Discarding TCP packet from non target ip %s for %s\n", dstIP, addr.String())
-			continue
-		}
-
-		packet := gopacket.NewPacket(data[:n], layers.LayerTypeTCP, gopacket.Default)
-		if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
-			tcp, ok := tcpLayer.(*layers.TCP)
-			if !ok {
-				continue
-			}
-			// We consider only incoming packets
-			if tcp.DstPort != layers.TCPPort(rawPort.Port) {
-				gologger.Debug().Msgf("Discarding TCP packet from %s:%d not matching %s:%d port\n", addr.String(), tcp.DstPort, dstIP, rawPort.Port)
-				continue
-			} else if tcp.RST {
-				gologger.Debug().Msgf("Accepting RST packet from %s:%d\n", addr.String(), tcp.DstPort)
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
 }

@@ -7,13 +7,10 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/projectdiscovery/naabu/v2/pkg/port"
-	"github.com/projectdiscovery/naabu/v2/pkg/privileges"
-	"github.com/projectdiscovery/naabu/v2/pkg/scan"
 	fileutil "github.com/projectdiscovery/utils/file"
-	iputil "github.com/projectdiscovery/utils/ip"
-	osutil "github.com/projectdiscovery/utils/os"
 	sliceutil "github.com/projectdiscovery/utils/slice"
+	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
+	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"
@@ -29,15 +26,10 @@ var (
 
 // ValidateOptions validates the configuration options passed
 func (options *Options) ValidateOptions() error {
-	// Check if Host, list of domains, or stdin info was provided.
+	// Check if Host or list of domains was provided.
 	// If none was provided, then return.
-	if options.Host == nil && options.HostsFile == "" && !options.Stdin && len(flag.Args()) == 0 {
+	if options.Host == nil && len(flag.Args()) == 0 {
 		return errNoInputList
-	}
-
-	if (options.WithHostDiscovery || options.OnlyHostDiscovery) && options.ScanType != SynScan {
-		gologger.Warning().Msgf("host discovery requires syn scan, automatically switching to syn scan")
-		options.ScanType = SynScan
 	}
 
 	// Both verbose and silent flags were used
@@ -79,73 +71,13 @@ func (options *Options) ValidateOptions() error {
 		}
 	}
 
-	// passive mode enables automatically stream
-	if options.Passive {
-		options.Stream = true
-	}
-
-	// stream
-	if options.Stream {
-		if options.Resume {
-			return errors.New("resume not supported in stream active mode")
-		}
-		if options.EnableProgressBar {
-			return errors.New("stats not supported in stream active mode")
-		}
-		if options.Nmap {
-			return errors.New("nmap not supported in stream active mode")
-		}
-	}
-
-	// stream passive
-	if options.Verify && options.Stream && !options.Passive {
-		return errors.New("verify not supported in stream active mode")
-	}
-
-	// Parse and validate source ip and source port
-	// checks if source ip is ip only
-	isOnlyIP := iputil.IsIP(options.SourceIP)
-	if options.SourceIP != "" && !isOnlyIP {
-		ip, port, err := net.SplitHostPort(options.SourceIP)
-		if err != nil {
-			return err
-		}
-		options.SourceIP = ip
-		options.SourcePort = port
-	}
-
 	if len(options.IPVersion) > 0 && !sliceutil.ContainsItems([]string{scan.IPv4, scan.IPv6}, options.IPVersion) {
 		return errors.New("IP Version must be 4 and/or 6")
-	}
-	// Return error if any host discovery releated option is provided but host discovery is disabled
-	if !options.WithHostDiscovery && options.hasProbes() {
-		return errors.New("discovery probes were provided but host discovery is disabled")
-	}
-
-	// Host Discovery mode needs provileged access
-	if options.OnlyHostDiscovery && !privileges.IsPrivileged {
-		if osutil.IsWindows() {
-			return errors.New("host discovery not (yet) supported on windows")
-		}
-		return errors.New("sudo access required to perform host discovery")
-	}
-
-	if options.PortThreshold < 0 || options.PortThreshold > 65535 {
-		return errors.New("port threshold must be between 0 and 65535")
-	}
-
-	if options.Proxy != "" && options.ScanType == SynScan {
-		gologger.Warning().Msgf("Syn Scan can't be used with socks proxy: falling back to connect scan")
-		options.ScanType = ConnectScan
 	}
 
 	if options.ScanType == SynScan && scan.PkgRouter == nil {
 		gologger.Warning().Msgf("Routing could not be determined (are you using a VPN?).falling back to connect scan")
 		options.ScanType = ConnectScan
-	}
-
-	if options.ServiceDiscovery || options.ServiceVersion {
-		return errors.New("service discovery feature is not implemented")
 	}
 
 	return nil
@@ -164,30 +96,5 @@ func (options *Options) configureOutput() {
 	}
 	if options.Silent {
 		gologger.DefaultLogger.SetMaxLevel(levels.LevelSilent)
-	}
-}
-
-// ConfigureHostDiscovery enables default probes if none is specified
-// but host discovery option was requested
-func (options *Options) configureHostDiscovery(ports []*port.Port) {
-	// if less than two ports are specified as input, reduce time and scan directly
-	if len(ports) <= 2 {
-		gologger.Info().Msgf("Host discovery disabled: less than two ports were specified")
-		options.WithHostDiscovery = false
-	}
-	if options.shouldDiscoverHosts() && !options.hasProbes() {
-		// if no options were defined enable
-		// - ICMP Echo Request
-		// - ICMP timestamp
-		// - TCP SYN on port 80
-		// - TCP SYN on port 443
-		// - TCP ACK on port 80
-		// - TCP ACK on port 443
-		options.IcmpEchoRequestProbe = true
-		options.IcmpTimestampRequestProbe = true
-		options.TcpSynPingProbes = append(options.TcpSynPingProbes, "80")
-		options.TcpSynPingProbes = append(options.TcpSynPingProbes, "443")
-		options.TcpAckPingProbes = append(options.TcpAckPingProbes, "80")
-		options.TcpAckPingProbes = append(options.TcpAckPingProbes, "443")
 	}
 }

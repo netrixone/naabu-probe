@@ -15,8 +15,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/projectdiscovery/naabu/v2/pkg/port"
-	"github.com/projectdiscovery/naabu/v2/pkg/protocol"
+	"github.com/stuchl4n3k/naabu-probe/pkg/port"
+	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
 )
 
 // Result contains the result for a host
@@ -25,9 +25,7 @@ type Result struct {
 	IP        string    `json:"ip,omitempty" csv:"ip"`
 	Port      int       `json:"port,omitempty" csv:"port"`
 	Protocol  string    `json:"protocol,omitempty" csv:"protocol"`
-	TLS       bool      `json:"tls,omitempty" csv:"tls"`
-	IsCDNIP   bool      `json:"cdn,omitempty" csv:"cdn"`
-	CDNName   string    `json:"cdn-name,omitempty" csv:"cdn-name"`
+	Label     string    `json:"label"`
 	TimeStamp time.Time `json:"timestamp,omitempty" csv:"timestamp"`
 }
 
@@ -35,7 +33,7 @@ type jsonResult struct {
 	Result
 	PortNumber int    `json:"port"`
 	Protocol   string `json:"protocol"`
-	TLS        bool   `json:"tls"`
+	Label      string `json:"label"`
 }
 
 func (r *Result) JSON() ([]byte, error) {
@@ -45,18 +43,14 @@ func (r *Result) JSON() ([]byte, error) {
 		data.Host = r.Host
 	}
 	data.IP = r.IP
-	data.IsCDNIP = r.IsCDNIP
-	data.CDNName = r.CDNName
 	data.PortNumber = r.Port
 	data.Protocol = r.Protocol
-	data.TLS = r.TLS
 
 	return json.Marshal(data)
 }
 
 var (
-	NumberOfCsvFieldsErr = errors.New("exported fields don't match csv tags")
-	headers              = []string{}
+	headers []string
 )
 
 func (r *Result) CSVHeaders() ([]string, error) {
@@ -87,7 +81,7 @@ func (r *Result) CSVFields() ([]string, error) {
 }
 
 // WriteHostOutput writes the output list of host ports to an io.Writer
-func WriteHostOutput(host string, ports []*port.Port, outputCDN bool, cdnName string, writer io.Writer) error {
+func WriteHostOutput(host string, ports []*port.Port, writer io.Writer) error {
 	bufwriter := bufio.NewWriter(writer)
 	sb := &strings.Builder{}
 
@@ -95,9 +89,6 @@ func WriteHostOutput(host string, ports []*port.Port, outputCDN bool, cdnName st
 		sb.WriteString(host)
 		sb.WriteString(":")
 		sb.WriteString(strconv.Itoa(p.Port))
-		if outputCDN && cdnName != "" {
-			sb.WriteString(" [" + cdnName + "]")
-		}
 		sb.WriteString("\n")
 		_, err := bufwriter.WriteString(sb.String())
 		if err != nil {
@@ -110,7 +101,7 @@ func WriteHostOutput(host string, ports []*port.Port, outputCDN bool, cdnName st
 }
 
 // WriteJSONOutput writes the output list of subdomain in JSON to an io.Writer
-func WriteJSONOutput(host, ip string, ports []*port.Port, outputCDN bool, isCdn bool, cdnName string, writer io.Writer) error {
+func WriteJSONOutput(host, ip string, ports []*port.Port, writer io.Writer) error {
 	encoder := json.NewEncoder(writer)
 	data := jsonResult{}
 	data.TimeStamp = time.Now().UTC()
@@ -118,14 +109,11 @@ func WriteJSONOutput(host, ip string, ports []*port.Port, outputCDN bool, isCdn 
 		data.Host = host
 	}
 	data.IP = ip
-	if outputCDN {
-		data.IsCDNIP = isCdn
-		data.CDNName = cdnName
-	}
+
 	for _, p := range ports {
 		data.PortNumber = p.Port
 		data.Protocol = p.Protocol.String()
-		data.TLS = p.TLS
+		data.Label = p.Label
 		if err := encoder.Encode(&data); err != nil {
 			return err
 		}
@@ -134,15 +122,11 @@ func WriteJSONOutput(host, ip string, ports []*port.Port, outputCDN bool, isCdn 
 }
 
 // WriteCsvOutput writes the output list of subdomain in csv format to an io.Writer
-func WriteCsvOutput(host, ip string, ports []*port.Port, outputCDN bool, isCdn bool, cdnName string, header bool, writer io.Writer) error {
+func WriteCsvOutput(host, ip string, ports []*port.Port, header bool, writer io.Writer) error {
 	encoder := csv.NewWriter(writer)
-	data := &Result{IP: ip, TimeStamp: time.Now().UTC(), Port: 0, Protocol: protocol.TCP.String(), TLS: false}
+	data := &Result{IP: ip, TimeStamp: time.Now().UTC(), Port: 0, Protocol: protocol.TCP.String(), Label: ""}
 	if host != ip {
 		data.Host = host
-	}
-	if outputCDN {
-		data.IsCDNIP = isCdn
-		data.CDNName = cdnName
 	}
 	if header {
 		writeCSVHeaders(data, encoder)
@@ -151,7 +135,7 @@ func WriteCsvOutput(host, ip string, ports []*port.Port, outputCDN bool, isCdn b
 	for _, p := range ports {
 		data.Port = p.Port
 		data.Protocol = p.Protocol.String()
-		data.TLS = p.TLS
+		data.Label = p.Label
 		writeCSVRow(data, encoder)
 	}
 	encoder.Flush()
