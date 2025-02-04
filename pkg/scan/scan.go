@@ -64,7 +64,6 @@ const (
 )
 
 type Scanner struct {
-	retries int
 	rate    int
 	timeout time.Duration
 
@@ -114,7 +113,6 @@ func NewScanner(options *Options) (*Scanner, error) {
 
 	scanner := &Scanner{
 		timeout:      options.Timeout,
-		retries:      options.Retries,
 		rate:         options.Rate,
 		tcpsequencer: NewTCPSequencer(),
 		IPRanger:     iprang,

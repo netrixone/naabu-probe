@@ -102,7 +102,6 @@ func NewRunner(options *Options) (*Runner, error) {
 
 	scanOpts := &scan.Options{
 		Timeout:   options.GetTimeout(),
-		Retries:   options.Retries,
 		Rate:      options.Rate,
 		OnReceive: options.OnReceive,
 		ScanType:  options.ScanType,
@@ -119,6 +118,10 @@ func NewRunner(options *Options) (*Runner, error) {
 	runner.scanner = scanner
 
 	runner.scanner.Ports = ports
+
+	if runner.stats, err = clistats.NewWithOptions(context.Background(), &clistats.Options{}); err != nil {
+		gologger.Warning().Msgf("Couldn't create progress engine: %s\n", err)
+	}
 
 	return runner, nil
 }
@@ -168,7 +171,7 @@ func (r *Runner) onReceive(hostResult *result.HostResult) {
 		}
 
 		// console output
-		if r.options.JSON || r.options.CSV {
+		if r.options.CSV {
 			data := &Result{IP: hostResult.IP, TimeStamp: time.Now().UTC()}
 			if host != hostResult.IP {
 				data.Host = host
@@ -177,13 +180,7 @@ func (r *Runner) onReceive(hostResult *result.HostResult) {
 				data.Port = p.Port
 				data.Protocol = p.Protocol.String()
 				data.Label = p.Label
-				if r.options.JSON {
-					b, err := data.JSON()
-					if err != nil {
-						continue
-					}
-					buffer.Write([]byte(fmt.Sprintf("%s\n", b)))
-				} else if r.options.CSV {
+				if r.options.CSV {
 					if csvHeaderEnabled {
 						writeCSVHeaders(data, writer)
 						csvHeaderEnabled = false
@@ -192,11 +189,9 @@ func (r *Runner) onReceive(hostResult *result.HostResult) {
 				}
 			}
 		}
-		if r.options.JSON {
-			gologger.Silent().Msgf("%s", buffer.String())
-		} else if r.options.CSV {
+
+		if r.options.CSV {
 			writer.Flush()
-			gologger.Silent().Msgf("%s", buffer.String())
 		} else {
 			for _, p := range hostResult.Ports {
 				gologger.Silent().Msgf("%s:%d\n", host, p.Port)
@@ -254,6 +249,14 @@ func (r *Runner) RunEnumeration(pctx context.Context) error {
 	Range := targetsCount * portsCount
 	r.scanner.ListenHandler.Phase.Set(scan.Scan)
 
+	r.stats.AddStatic("ports", portsCount)
+	r.stats.AddStatic("hosts", targetsCount)
+	r.stats.AddStatic("retries", r.options.Retries)
+	r.stats.AddStatic("startedAt", time.Now())
+	r.stats.AddCounter("packets", uint64(0))
+	r.stats.AddCounter("errors", uint64(0))
+	r.stats.AddCounter("total", Range*uint64(r.options.Retries))
+
 	// Retries are performed regardless of the previous scan results due to network unreliability
 	for currentRetry := 0; currentRetry < r.options.Retries; currentRetry++ {
 		// Use current time as seed
@@ -274,24 +277,9 @@ func (r *Runner) RunEnumeration(pctx context.Context) error {
 				r.wgscan.Add()
 				go r.handleHostPort(ctx, ip, port)
 			}
-		}
 
-		//for _, targetWithPort := range targetsWithPort {
-		//	ip, p, err := net.SplitHostPort(targetWithPort)
-		//
-		//	var portWithMetadata = port.Port{
-		//		Port:     p,
-		//		Protocol: protocol.TCP,
-		//	}
-		//
-		//	// connect scan
-		//	if shouldUseRawPackets {
-		//		r.RawSocketEnumeration(ctx, ip, &portWithMetadata)
-		//	} else {
-		//		r.wgscan.Add()
-		//		go r.handleHostPort(ctx, ip, &portWithMetadata)
-		//	}
-		//}
+			r.stats.IncrementCounter("packets", 1)
+		}
 
 		r.wgscan.Wait()
 	}
@@ -515,6 +503,10 @@ func (r *Runner) SetInterface(interfaceName string) error {
 	return nil
 }
 
+func (r *Runner) Stats() clistats.StatisticsClient {
+	return r.stats
+}
+
 func (r *Runner) handleOutput(scanResults *result.Result) {
 	var (
 		file   *os.File
@@ -552,8 +544,7 @@ func (r *Runner) handleOutput(scanResults *result.Result) {
 	}
 	csvFileHeaderEnabled := true
 
-	switch {
-	case scanResults.HasIPsPorts():
+	if scanResults.HasIPsPorts() {
 		for hostResult := range scanResults.GetIPsPorts() {
 			dt, err := r.scanner.IPRanger.GetHostsByIP(hostResult.IP)
 			if err != nil {
@@ -587,15 +578,15 @@ func (r *Runner) handleOutput(scanResults *result.Result) {
 				}
 
 				gologger.Info().Msgf("Found %d ports on host %s (%s)\n", len(hostResult.Ports), host, hostResult.IP)
+
 				// file output
 				if file != nil {
-					if r.options.JSON {
-						err = WriteJSONOutput(host, hostResult.IP, hostResult.Ports, file)
-					} else if r.options.CSV {
+					if r.options.CSV {
 						err = WriteCsvOutput(host, hostResult.IP, hostResult.Ports, csvFileHeaderEnabled, file)
 					} else {
 						err = WriteHostOutput(host, hostResult.Ports, file)
 					}
+
 					if err != nil {
 						gologger.Error().Msgf("Could not write results to file %s for %s: %s\n", output, host, err)
 					}
@@ -603,60 +594,6 @@ func (r *Runner) handleOutput(scanResults *result.Result) {
 
 				if r.options.OnResult != nil {
 					r.options.OnResult(&result.HostResult{Host: host, IP: hostResult.IP, Ports: hostResult.Ports})
-				}
-			}
-			csvFileHeaderEnabled = false
-		}
-	case scanResults.HasIPS():
-		for hostIP := range scanResults.GetIPs() {
-			dt, err := r.scanner.IPRanger.GetHostsByIP(hostIP)
-			if err != nil {
-				continue
-			}
-			if !ipMatchesIpVersions(hostIP, r.options.IPVersion...) {
-				continue
-			}
-
-			buffer := bytes.Buffer{}
-			writer := csv.NewWriter(&buffer)
-			for _, host := range dt {
-				buffer.Reset()
-				if host == "ip" {
-					host = hostIP
-				}
-
-				gologger.Info().Msgf("Found alive host %s (%s)\n", host, hostIP)
-				// console output
-				if r.options.JSON || r.options.CSV {
-					data := &Result{IP: hostIP, TimeStamp: time.Now().UTC()}
-					if host != hostIP {
-						data.Host = host
-					}
-				}
-				if r.options.JSON {
-					gologger.Silent().Msgf("%s", buffer.String())
-				} else if r.options.CSV {
-					writer.Flush()
-					gologger.Silent().Msgf("%s", buffer.String())
-				} else {
-					gologger.Silent().Msgf("%s\n", host)
-				}
-				// file output
-				if file != nil {
-					if r.options.JSON {
-						err = WriteJSONOutput(host, hostIP, nil, file)
-					} else if r.options.CSV {
-						err = WriteCsvOutput(host, hostIP, nil, csvFileHeaderEnabled, file)
-					} else {
-						err = WriteHostOutput(host, nil, file)
-					}
-					if err != nil {
-						gologger.Error().Msgf("Could not write results to file %s for %s: %s\n", output, host, err)
-					}
-				}
-
-				if r.options.OnResult != nil {
-					r.options.OnResult(&result.HostResult{Host: host, IP: hostIP})
 				}
 			}
 			csvFileHeaderEnabled = false

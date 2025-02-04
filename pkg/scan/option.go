@@ -9,7 +9,6 @@ import (
 // Options of the scan
 type Options struct {
 	Timeout   time.Duration
-	Retries   int
 	Rate      int
 	OnReceive result.ResultCallback
 	ScanType  string

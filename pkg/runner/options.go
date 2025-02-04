@@ -20,7 +20,6 @@ import (
 type Options struct {
 	Verbose        bool // Verbose flag indicates whether to show verbose output or not
 	NoColor        bool // No-Color disables the colored output
-	JSON           bool // JSON specifies whether to use json for output format or text file
 	Silent         bool // Silent suppresses any extra text and only writes found host:port to screen
 	Verify         bool // Verify is used to check if the ports found were valid using CONNECT method
 	Version        bool // Version specifies if we should just show version and exit
@@ -59,11 +58,8 @@ type Options struct {
 	IPv6NeighborDiscoveryPing bool
 	// HostDiscoveryIgnoreRST      bool - planned
 	InputReadTimeout time.Duration
-	DisableStdin     bool
 	// ReversePTR lookup for ips
 	ReversePTR bool
-	// MetricsPort with statistics
-	MetricsPort int
 }
 
 // ParseOptions parses the command line flags provided by a user
@@ -91,7 +87,6 @@ func ParseOptions() *Options {
 
 	flagSet.CreateGroup("output", "Output",
 		flagSet.StringVarP(&options.Output, "output", "o", "", "file to write output to (optional)"),
-		flagSet.BoolVarP(&options.JSON, "json", "j", false, "write output in JSON lines format"),
 		flagSet.BoolVar(&options.CSV, "csv", false, "write output in csv format"),
 	)
 
@@ -103,7 +98,6 @@ func ParseOptions() *Options {
 		flagSet.StringVarP(&options.Interface, "i", "interface", "", "network Interface to use for port scan"),
 		flagSet.StringVar(&options.Resolvers, "r", "", "list of custom resolver dns resolution (comma separated or from file)"),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", 3*time.Minute, "timeout on input read"),
-		flagSet.BoolVar(&options.DisableStdin, "no-stdin", false, "Disable Stdin processing"),
 	)
 
 	flagSet.CreateGroup("optimization", "Optimization",
@@ -120,7 +114,6 @@ func ParseOptions() *Options {
 		flagSet.BoolVarP(&options.NoColor, "nc", "no-color", false, "disable colors in CLI output"),
 		flagSet.BoolVar(&options.Silent, "silent", false, "display only results in output"),
 		flagSet.BoolVar(&options.Version, "version", false, "display version of naabu"),
-		flagSet.IntVarP(&options.MetricsPort, "metrics-port", "mp", 63636, "port to expose naabu metrics on"),
 	)
 
 	_ = flagSet.Parse()
