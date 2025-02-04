@@ -15,6 +15,7 @@ import (
 
 	"github.com/Mzack9999/gcache"
 	"github.com/miekg/dns"
+	"github.com/modern-go/concurrent"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/blackrock"
 	"github.com/projectdiscovery/clistats"
@@ -31,20 +32,19 @@ import (
 	"github.com/stuchl4n3k/naabu-probe/pkg/result"
 	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 	"golang.org/x/exp/slices"
-	"golang.org/x/sync/semaphore"
 )
 
 // Runner is an instance of the port enumeration
 // client used to orchestrate the whole process.
 type Runner struct {
-	options       *Options
-	scanner       *scan.Scanner
-	limiter       *ratelimit.Limiter
-	hostSemaphore map[string]*semaphore.Weighted
-	wgscan        sizedwaitgroup.SizedWaitGroup
-	dnsclient     *dnsx.DNSX
-	stats         *clistats.Statistics
-	streamChannel chan Target
+	options        *Options
+	scanner        *scan.Scanner
+	limiter        *ratelimit.Limiter
+	hostSemaphores *concurrent.Map
+	wgscan         sizedwaitgroup.SizedWaitGroup
+	dnsclient      *dnsx.DNSX
+	stats          *clistats.Statistics
+	streamChannel  chan Target
 
 	unique gcache.Cache[string, struct{}]
 }
@@ -230,10 +230,7 @@ func (r *Runner) RunEnumeration(pctx context.Context) error {
 	// Init scan workers.
 	r.wgscan = sizedwaitgroup.New(r.options.Rate)
 	r.limiter = ratelimit.New(context.Background(), uint(r.options.Rate), time.Second)
-	r.hostSemaphore = make(map[string]*semaphore.Weighted)
-	for _, host := range r.options.Host {
-		r.hostSemaphore[host] = semaphore.NewWeighted(int64(r.options.PerHostConcurrency))
-	}
+	r.hostSemaphores = concurrent.NewMap()
 
 	shouldUseRawPackets := r.options.shouldUseRawPackets()
 
@@ -456,11 +453,8 @@ func (r *Runner) handleHostPort(ctx context.Context, host string, p *port.Port) 
 		}
 
 		r.limiter.Take()
-		sem := r.hostSemaphore[host]
-		if err := sem.Acquire(ctx, 1); err != nil {
-			gologger.Error().Msgf("Could not acquire semaphore for host: %s\n", err)
-		}
-		defer sem.Release(1)
+		r.takeHostLimitToken(ctx, host)
+		defer r.releaseHostLimitToken(host)
 
 		open, err := r.scanner.ConnectPort(host, p, r.options.GetTimeout())
 		if open && err == nil {

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"net"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	iputil "github.com/projectdiscovery/utils/ip"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
+	"golang.org/x/sync/semaphore"
 )
 
 func (r *Runner) LoadTargets(targets []string) error {
@@ -146,4 +148,21 @@ func (r *Runner) resolveFQDN(target string) ([]string, error) {
 	}
 
 	return hostIPS, nil
+}
+
+func (r *Runner) takeHostLimitToken(ctx context.Context, host string) {
+	s, _ := r.hostSemaphores.LoadOrStore(host, semaphore.NewWeighted(int64(r.options.PerHostConcurrency)))
+	sem := s.(*semaphore.Weighted)
+	_ = sem.Acquire(ctx, 1)
+}
+
+func (r *Runner) releaseHostLimitToken(host string) {
+	s, ok := r.hostSemaphores.Load(host)
+	if !ok {
+		gologger.Warning().Msg("Attempt to release host limit, that was not held.\n")
+		return
+	}
+
+	sem := s.(*semaphore.Weighted)
+	sem.Release(1)
 }
