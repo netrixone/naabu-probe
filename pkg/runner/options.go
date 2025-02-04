@@ -140,11 +140,11 @@ func ParseOptions() *Options {
 		os.Exit(0)
 	}
 
-	options.configureOutput()
+	options.ConfigureOutput()
 
 	// Show network configuration and exit if the user requested it
 	if options.InterfacesList {
-		err := showNetworkInterfaces()
+		err := ShowNetworkInterfaces()
 		if err != nil {
 			gologger.Error().Msgf("Could not get network interfaces: %s\n", err)
 		}

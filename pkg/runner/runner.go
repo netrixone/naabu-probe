@@ -59,7 +59,7 @@ type Target struct {
 // NewRunner creates a new runner struct instance by parsing
 // the configuration options, configuring sources, reading lists, etc
 func NewRunner(options *Options) (*Runner, error) {
-	options.configureOutput()
+	options.ConfigureOutput()
 
 	// automatically disable host discovery when less than two ports for scan are provided
 	ports, err := ParsePorts(options)
@@ -237,7 +237,7 @@ func (r *Runner) RunEnumeration(pctx context.Context) error {
 
 	shouldUseRawPackets := r.options.shouldUseRawPackets()
 
-	showNetworkCapabilities(r.options)
+	ShowNetworkCapabilities(r.options)
 	ipsCallback := r.getPreprocessedIps
 
 	// shrinks the ips to the minimum amount of cidr

@@ -8,5 +8,5 @@ import (
 
 func TestShowNetworkInterfaces(t *testing.T) {
 	// non root users should be able to list interfaces
-	assert.Nil(t, showNetworkInterfaces())
+	assert.Nil(t, ShowNetworkInterfaces())
 }

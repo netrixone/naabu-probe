@@ -10,8 +10,8 @@ import (
 	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 )
 
-// showNetworkCapabilities shows the network capabilities/scan types possible with the running user
-func showNetworkCapabilities(options *Options) {
+// ShowNetworkCapabilities shows the network capabilities/scan types possible with the running user
+func ShowNetworkCapabilities(options *Options) {
 	var accessLevel, scanType string
 
 	switch {
@@ -29,7 +29,7 @@ func showNetworkCapabilities(options *Options) {
 	gologger.Info().Msgf("Running %s scan with %s privileges\n", scanType, accessLevel)
 }
 
-func showNetworkInterfaces() error {
+func ShowNetworkInterfaces() error {
 	// Interfaces List
 	interfaces, err := net.Interfaces()
 	if err != nil {
