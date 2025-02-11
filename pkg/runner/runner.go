@@ -21,6 +21,7 @@ import (
 	"github.com/projectdiscovery/clistats"
 	"github.com/projectdiscovery/dnsx/libs/dnsx"
 	"github.com/projectdiscovery/gologger"
+	"github.com/projectdiscovery/ipranger"
 	"github.com/projectdiscovery/mapcidr"
 	"github.com/projectdiscovery/ratelimit"
 	fileutil "github.com/projectdiscovery/utils/file"
@@ -311,6 +312,10 @@ func (r *Runner) getPreprocessedIps() (cidrs []*net.IPNet) {
 		return nil
 	})
 	return
+}
+
+func (r *Runner) IPs() *ipranger.IPRanger {
+	return r.scanner.IPRanger
 }
 
 func (r *Runner) GetTargetIps(ipsCallback func() []*net.IPNet) (targets, targetsV4, targetsV6 []*net.IPNet, err error) {
