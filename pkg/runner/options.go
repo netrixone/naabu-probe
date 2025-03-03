@@ -40,6 +40,8 @@ type Options struct {
 	Threads            int                 // Internal worker threads
 	IPVersion          goflags.StringSlice // IP Version to use while resolving hostnames
 	ScanType           string              // Scan Type
+	Proxy              string              // Socks5 proxy
+	ProxyAuth          string              // Socks5 proxy authentication (username:password)
 	Resolvers          string              // Resolvers (comma separated or file)
 	baseResolvers      []string
 	OnResult           result.ResultCallback // callback on final host result
@@ -97,6 +99,8 @@ func ParseOptions() *Options {
 		flagSet.BoolVarP(&options.InterfacesList, "il", "interface-list", false, "list available interfaces and public ip"),
 		flagSet.StringVarP(&options.Interface, "i", "interface", "", "network Interface to use for port scan"),
 		flagSet.StringVar(&options.Resolvers, "r", "", "list of custom resolver dns resolution (comma separated or from file)"),
+		flagSet.StringVar(&options.Proxy, "proxy", "", "socks5 proxy (ip[:port] / fqdn[:port]"),
+		flagSet.StringVar(&options.ProxyAuth, "proxy-auth", "", "socks5 proxy authentication (username:password)"),
 		flagSet.DurationVarP(&options.InputReadTimeout, "input-read-timeout", "irt", 3*time.Minute, "timeout on input read"),
 	)
 

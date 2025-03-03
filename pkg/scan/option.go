@@ -12,4 +12,6 @@ type Options struct {
 	Rate      int
 	OnReceive result.ResultCallback
 	ScanType  string
+	Proxy     string
+	ProxyAuth string
 }

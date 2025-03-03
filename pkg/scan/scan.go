@@ -2,10 +2,12 @@ package scan
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/stuchl4n3k/naabu-probe/pkg/port"
 	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
 	"github.com/stuchl4n3k/naabu-probe/pkg/result"
+	"golang.org/x/net/proxy"
 )
 
 // State determines the internal scan state
@@ -64,8 +67,9 @@ const (
 )
 
 type Scanner struct {
-	rate    int
-	timeout time.Duration
+	rate        int
+	timeout     time.Duration
+	proxyDialer proxy.Dialer
 
 	Ports    []*port.Port
 	IPRanger *ipranger.IPRanger
@@ -121,6 +125,27 @@ func NewScanner(options *Options) (*Scanner, error) {
 
 	scanner.HostDiscoveryResults = result.NewResult()
 	scanner.ScanResults = result.NewResult()
+
+	var auth *proxy.Auth = nil
+
+	if options.ProxyAuth != "" && strings.Contains(options.ProxyAuth, ":") {
+		credentials := strings.SplitN(options.ProxyAuth, ":", 2)
+		var user, password string
+		user = credentials[0]
+		if len(credentials) == 2 {
+			password = credentials[1]
+		}
+		auth = &proxy.Auth{User: user, Password: password}
+	}
+
+	if options.Proxy != "" {
+		proxyDialer, err := proxy.SOCKS5("tcp", options.Proxy, auth, &net.Dialer{Timeout: options.Timeout * 2})
+		if err != nil {
+			return nil, err
+		}
+		scanner.proxyDialer = proxyDialer
+	}
+
 acquire:
 	if handler, err := Acquire(options); err != nil {
 		// automatically fallback to connect scan
@@ -252,15 +277,28 @@ func (s *Scanner) ConnectPort(host string, p *port.Port, timeout time.Duration) 
 		conn net.Conn
 	)
 
-	netDialer := net.Dialer{
-		Timeout: timeout,
+	if s.proxyDialer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout*2)
+		defer cancel()
+		proxyDialer, ok := s.proxyDialer.(proxy.ContextDialer)
+		if !ok {
+			return false, errors.New("invalid proxy dialer")
+		}
+		conn, err = proxyDialer.DialContext(ctx, p.Protocol.String(), hostport)
+		if err != nil {
+			return false, err
+		}
+	} else {
+		netDialer := net.Dialer{
+			Timeout: timeout,
+		}
+		if s.ListenHandler.SourceIp4 != nil {
+			netDialer.LocalAddr = &net.TCPAddr{IP: s.ListenHandler.SourceIp4}
+		} else if s.ListenHandler.SourceIP6 != nil {
+			netDialer.LocalAddr = &net.TCPAddr{IP: s.ListenHandler.SourceIP6}
+		}
+		conn, err = netDialer.Dial(p.Protocol.String(), hostport)
 	}
-	if s.ListenHandler.SourceIp4 != nil {
-		netDialer.LocalAddr = &net.TCPAddr{IP: s.ListenHandler.SourceIp4}
-	} else if s.ListenHandler.SourceIP6 != nil {
-		netDialer.LocalAddr = &net.TCPAddr{IP: s.ListenHandler.SourceIP6}
-	}
-	conn, err = netDialer.Dial(p.Protocol.String(), hostport)
 
 	if err != nil {
 		return false, err

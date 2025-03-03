@@ -106,6 +106,8 @@ func NewRunner(options *Options) (*Runner, error) {
 		Rate:      options.Rate,
 		OnReceive: options.OnReceive,
 		ScanType:  options.ScanType,
+		Proxy:     options.Proxy,
+		ProxyAuth: options.ProxyAuth,
 	}
 
 	if scanOpts.OnReceive == nil {
@@ -221,6 +223,11 @@ func (r *Runner) RunEnumeration(pctx context.Context) error {
 	err := r.LoadTargets(r.options.Host)
 	if err != nil {
 		return err
+	}
+
+	// Automatically adjust rate limit if proxy is used
+	if r.options.Proxy != "" {
+		r.options.Rate = r.options.Rate / 2
 	}
 
 	// Init scan workers.
