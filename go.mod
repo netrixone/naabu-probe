@@ -1,4 +1,4 @@
-module github.com/stuchl4n3k/naabu-probe
+module github.com/netrixone/naabu-probe
 
 go 1.21
 

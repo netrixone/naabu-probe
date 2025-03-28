@@ -6,11 +6,11 @@ import (
 	"net"
 	"strings"
 
+	"github.com/netrixone/naabu-probe/pkg/privileges"
+	"github.com/netrixone/naabu-probe/pkg/scan"
 	"github.com/pkg/errors"
 	fileutil "github.com/projectdiscovery/utils/file"
 	sliceutil "github.com/projectdiscovery/utils/slice"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
-	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/gologger/formatter"

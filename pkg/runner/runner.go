@@ -9,13 +9,17 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/Mzack9999/gcache"
 	"github.com/miekg/dns"
 	"github.com/modern-go/concurrent"
+	"github.com/netrixone/naabu-probe/pkg/port"
+	"github.com/netrixone/naabu-probe/pkg/privileges"
+	"github.com/netrixone/naabu-probe/pkg/protocol"
+	"github.com/netrixone/naabu-probe/pkg/result"
+	"github.com/netrixone/naabu-probe/pkg/scan"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/blackrock"
 	"github.com/projectdiscovery/clistats"
@@ -27,11 +31,6 @@ import (
 	fileutil "github.com/projectdiscovery/utils/file"
 	iputil "github.com/projectdiscovery/utils/ip"
 	"github.com/remeh/sizedwaitgroup"
-	"github.com/stuchl4n3k/naabu-probe/pkg/port"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
-	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
-	"github.com/stuchl4n3k/naabu-probe/pkg/result"
-	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 	"golang.org/x/exp/slices"
 )
 
@@ -488,24 +487,8 @@ func (r *Runner) SetSourceIP(sourceIP string) error {
 	return nil
 }
 
-func (r *Runner) SetSourcePort(sourcePort string) error {
-	isValidPort := iputil.IsPort(sourcePort)
-	if !isValidPort {
-		return errors.New("invalid source port")
-	}
-
-	port, err := strconv.Atoi(sourcePort)
-	if err != nil {
-		return err
-	}
-
-	r.scanner.ListenHandler.Port = port
-
-	return nil
-}
-
 func (r *Runner) SetInterface(interfaceName string) error {
-	networkInterface, err := net.InterfaceByName(r.options.Interface)
+	networkInterface, err := net.InterfaceByName(interfaceName)
 	if err != nil {
 		return err
 	}

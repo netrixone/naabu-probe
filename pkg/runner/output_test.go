@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/netrixone/naabu-probe/pkg/port"
+	"github.com/netrixone/naabu-probe/pkg/protocol"
 	"github.com/stretchr/testify/assert"
-	"github.com/stuchl4n3k/naabu-probe/pkg/port"
-	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
 )
 
 func TestWriteHostOutput(t *testing.T) {

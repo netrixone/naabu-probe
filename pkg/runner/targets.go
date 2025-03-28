@@ -5,11 +5,11 @@ import (
 	"net"
 	"strings"
 
+	"github.com/netrixone/naabu-probe/pkg/scan"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/mapcidr/asn"
 	iputil "github.com/projectdiscovery/utils/ip"
 	"github.com/remeh/sizedwaitgroup"
-	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 	"golang.org/x/sync/semaphore"
 )
 

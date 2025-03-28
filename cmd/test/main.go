@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/armon/go-socks5"
-	"github.com/stuchl4n3k/naabu-probe/pkg/result"
-	"github.com/stuchl4n3k/naabu-probe/pkg/runner"
+	"github.com/netrixone/naabu-probe/pkg/result"
+	"github.com/netrixone/naabu-probe/pkg/runner"
 )
 
 func main() {

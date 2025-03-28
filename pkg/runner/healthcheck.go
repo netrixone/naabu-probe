@@ -6,9 +6,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/netrixone/naabu-probe/pkg/privileges"
 	"github.com/projectdiscovery/goflags"
 	fileutil "github.com/projectdiscovery/utils/file"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
 )
 
 func DoHealthCheck(options *Options, flagSet *goflags.FlagSet) string {

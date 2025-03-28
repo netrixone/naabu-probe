@@ -13,10 +13,10 @@ import (
 
 	"golang.org/x/exp/slices"
 
+	"github.com/netrixone/naabu-probe/pkg/port"
+	"github.com/netrixone/naabu-probe/pkg/protocol"
 	"github.com/pkg/errors"
 	"github.com/projectdiscovery/gologger"
-	"github.com/stuchl4n3k/naabu-probe/pkg/port"
-	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
 )
 
 // Result contains the result for a host

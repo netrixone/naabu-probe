@@ -4,10 +4,10 @@ import (
 	"net"
 	"strings"
 
+	"github.com/netrixone/naabu-probe/pkg/privileges"
+	"github.com/netrixone/naabu-probe/pkg/scan"
 	"github.com/projectdiscovery/gologger"
 	osutil "github.com/projectdiscovery/utils/os"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
-	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 )
 
 // ShowNetworkCapabilities shows the network capabilities/scan types possible with the running user

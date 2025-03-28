@@ -11,7 +11,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/pkg/errors"
 
-	"github.com/stuchl4n3k/naabu-probe/internal/testutils"
+	"github.com/netrixone/naabu-probe/internal/testutils"
 )
 
 var (

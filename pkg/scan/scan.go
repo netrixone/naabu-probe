@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/netrixone/naabu-probe/pkg/port"
+	"github.com/netrixone/naabu-probe/pkg/protocol"
+	"github.com/netrixone/naabu-probe/pkg/result"
 	"github.com/projectdiscovery/cdncheck"
 	"github.com/projectdiscovery/gologger"
 	"github.com/projectdiscovery/ipranger"
 	"github.com/projectdiscovery/networkpolicy"
-	"github.com/stuchl4n3k/naabu-probe/pkg/port"
-	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
-	"github.com/stuchl4n3k/naabu-probe/pkg/result"
 	"golang.org/x/net/proxy"
 )
 

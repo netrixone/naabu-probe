@@ -3,11 +3,11 @@ package runner
 import (
 	"fmt"
 
+	"github.com/netrixone/naabu-probe/pkg/scan"
 	"github.com/projectdiscovery/gologger"
 	iputil "github.com/projectdiscovery/utils/ip"
 	osutil "github.com/projectdiscovery/utils/os"
 	sliceutil "github.com/projectdiscovery/utils/slice"
-	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 )
 
 func (r *Runner) host2ips(target string) (targetIPsV4 []string, targetIPsV6 []string, err error) {

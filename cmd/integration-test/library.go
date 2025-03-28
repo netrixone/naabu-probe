@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/armon/go-socks5"
-	"github.com/stuchl4n3k/naabu-probe/internal/testutils"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
-	"github.com/stuchl4n3k/naabu-probe/pkg/result"
-	"github.com/stuchl4n3k/naabu-probe/pkg/runner"
+	"github.com/netrixone/naabu-probe/internal/testutils"
+	"github.com/netrixone/naabu-probe/pkg/privileges"
+	"github.com/netrixone/naabu-probe/pkg/result"
+	"github.com/netrixone/naabu-probe/pkg/runner"
 )
 
 var libraryTestcases = map[string]testutils.TestCase{

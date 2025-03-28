@@ -3,7 +3,7 @@ package scan
 import (
 	"time"
 
-	"github.com/stuchl4n3k/naabu-probe/pkg/result"
+	"github.com/netrixone/naabu-probe/pkg/result"
 )
 
 // Options of the scan

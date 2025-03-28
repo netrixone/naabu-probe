@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/netrixone/naabu-probe/pkg/port"
+	"github.com/netrixone/naabu-probe/pkg/protocol"
 	"github.com/pkg/errors"
-	"github.com/stuchl4n3k/naabu-probe/pkg/port"
-	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
 )
 
 const portListStrParts = 2

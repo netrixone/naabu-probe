@@ -3,7 +3,7 @@ package port
 import (
 	"fmt"
 
-	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
+	"github.com/netrixone/naabu-probe/pkg/protocol"
 )
 
 type Port struct {

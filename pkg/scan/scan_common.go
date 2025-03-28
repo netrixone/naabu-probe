@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net"
 
+	"github.com/netrixone/naabu-probe/pkg/privileges"
+	"github.com/netrixone/naabu-probe/pkg/routing"
 	"github.com/projectdiscovery/gologger"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
-	"github.com/stuchl4n3k/naabu-probe/pkg/routing"
 )
 
 const (

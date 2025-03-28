@@ -14,13 +14,13 @@ import (
 	"github.com/gopacket/gopacket"
 	"github.com/gopacket/gopacket/layers"
 	"github.com/gopacket/gopacket/pcap"
+	"github.com/netrixone/naabu-probe/pkg/port"
+	"github.com/netrixone/naabu-probe/pkg/privileges"
+	"github.com/netrixone/naabu-probe/pkg/protocol"
+	"github.com/netrixone/naabu-probe/pkg/routing"
 	"github.com/projectdiscovery/freeport"
 	"github.com/projectdiscovery/gologger"
 	iputil "github.com/projectdiscovery/utils/ip"
-	"github.com/stuchl4n3k/naabu-probe/pkg/port"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
-	"github.com/stuchl4n3k/naabu-probe/pkg/protocol"
-	"github.com/stuchl4n3k/naabu-probe/pkg/routing"
 )
 
 var (

@@ -4,11 +4,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/netrixone/naabu-probe/pkg/privileges"
+	"github.com/netrixone/naabu-probe/pkg/result"
+	"github.com/netrixone/naabu-probe/pkg/scan"
 	fileutil "github.com/projectdiscovery/utils/file"
 	sliceutil "github.com/projectdiscovery/utils/slice"
-	"github.com/stuchl4n3k/naabu-probe/pkg/privileges"
-	"github.com/stuchl4n3k/naabu-probe/pkg/result"
-	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 
 	"github.com/projectdiscovery/goflags"
 	"github.com/projectdiscovery/gologger"

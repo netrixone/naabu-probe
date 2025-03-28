@@ -3,9 +3,9 @@ package runner
 import (
 	"testing"
 
+	"github.com/netrixone/naabu-probe/pkg/scan"
 	"github.com/projectdiscovery/ipranger"
 	"github.com/stretchr/testify/require"
-	"github.com/stuchl4n3k/naabu-probe/pkg/scan"
 )
 
 func Test_AddTarget(t *testing.T) {

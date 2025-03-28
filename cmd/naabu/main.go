@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/netrixone/naabu-probe/pkg/runner"
 	_ "github.com/projectdiscovery/fdmax/autofdmax"
 	"github.com/projectdiscovery/gologger"
-	"github.com/stuchl4n3k/naabu-probe/pkg/runner"
 )
 
 func main() {
